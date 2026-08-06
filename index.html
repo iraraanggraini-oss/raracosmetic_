@@ -711,4 +711,399 @@
       if(!raw) return `<div style="padding:18px">Tidak ada data checkout. Kembali ke keranjang.</div>`;  
       const payload = JSON.parse(raw);  
       const items = payload.items;  
-     
+     const subtotal = items.reduce((s,i)=>s + i.unitPrice * i.qty, 0);  
+      const shipping = items.length ? Number(getComputedStyle(document.documentElement).getPropertyValue('--shipping') || 20000) : 0;  
+      const total = subtotal + shipping;  
+      return `  
+        <div style="display:flex;justify-content:space-between;align-items:center">  
+          <h2>Checkout</h2>  
+          <div class="small muted">${items.length} produk</div>  
+        </div>  
+  
+        <div style="margin-top:12px;background:var(--surface);padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,0.03)">  
+          <div style="font-weight:800">Alamat Pengiriman</div>  
+          <div class="small muted" style="margin-top:6px">${state.user.address || '-'}</div>  
+          <div style="margin-top:8px"><button class="btn btn-ghost" onclick="editProfile(true)">Ubah Alamat</button></div>  
+        </div>  
+  
+        <div style="margin-top:12px">  
+          ${items.map(it=>`  
+          <div style="display:flex;gap:12px;align-items:center;padding:10px;background:${it.img ? '#fff' : 'transparent'};border-radius:10px;border:1px solid rgba(0,0,0,0.03);margin-bottom:8px">  
+            <img src="${it.img}" alt="${it.name}" style="width:72px;height:72px;object-fit:cover;border-radius:10px">  
+            <div style="flex:1">  
+              <div style="font-weight:800">${it.name}</div>  
+              <div class="small muted">Shade: ${it.shade||'-'} • Ukuran: ${it.size||'-'}</div>  
+              <div style="margin-top:8px;font-weight:800">${formatRp(it.unitPrice)} × ${it.qty}</div>  
+            </div>  
+          </div>  
+          `).join('')}  
+        </div>  
+  
+        <div style="margin-top:12px;padding:12px;background:var(--surface);border-radius:12px;border:1px solid rgba(0,0,0,0.03)">  
+          <div class="spaced"><div class="small muted">Subtotal</div><div>${formatRp(subtotal)}</div></div>  
+          <div class="spaced" style="margin-top:6px"><div class="small muted">Ongkos Kirim</div><div>${formatRp(shipping)}</div></div>  
+          <div class="spaced" style="margin-top:12px"><div style="font-weight:900">Total</div><div style="font-weight:900;color:var(--accent)">${formatRp(total)}</div></div>  
+          <div style="margin-top:12px">  
+            <div class="small muted">Metode Pembayaran</div>  
+            <div style="display:flex;gap:8px;margin-top:8px">  
+              <button class="btn btn-ghost">COD - Bayar di Tempat</button>  
+            </div>  
+          </div>  
+          <div style="display:flex;gap:8px;margin-top:12px">  
+            <button class="btn btn-ghost" onclick="navigate('cart')">Kembali</button>  
+            <button class="btn btn-accent" style="flex:1" onclick="confirmCheckout()">Konfirmasi & Bayar</button>  
+          </div>  
+        </div>  
+      `;  
+    }  
+  
+    function attachCheckoutEvents(){}  
+  
+    function confirmCheckout(){  
+      const raw = sessionStorage.getItem("rara_checkout");  
+      if(!raw) return toast('Data checkout tidak ditemukan');  
+      const payload = JSON.parse(raw);  
+      const items = payload.items;  
+      const subtotal = items.reduce((s,i)=>s + i.unitPrice * i.qty, 0);  
+      const shipping = items.length ? Number(getComputedStyle(document.documentElement).getPropertyValue('--shipping') || 20000) : 0;  
+      const total = subtotal + shipping;  
+      const orderId = genOrderId();  
+      const order = {  
+        orderId,  
+        items: items.map(i=>({...i})),  
+        address: state.user.address,  
+        total,  
+        status: "Dikemas",  
+        timeline: [{status:"Dikemas", at: new Date().toISOString()}],  
+        createdAt: new Date().toISOString()  
+      };  
+      state.orders.unshift(order); // newest first  
+      // If checkout from cart, remove those items from cart  
+      if(payload.fromCart){  
+        // Remove items by uid  
+        const uids = items.map(i=>i.uid);  
+        state.cart = state.cart.filter(c=>!uids.includes(c.uid));  
+      }  
+      saveState();  
+      sessionStorage.removeItem("rara_checkout");  
+      toast('Pembayaran berhasil — Pesanan dibuat');  
+      navigate('orders', {open: orderId});  
+    }  
+  
+    /* ----- Orders view ----- */  
+    function renderOrders(){  
+      if(!state.orders.length){  
+        return `  
+          <div style="padding:18px;text-align:center">  
+            <h3>Belum ada pesanan</h3>  
+            <div class="muted">Pesananmu akan tampil di sini setelah checkout.</div>  
+            <div style="margin-top:12px"><button class="btn btn-primary" onclick="navigate('home')">Belanja Sekarang</button></div>  
+          </div>  
+        `;  
+      }  
+      return `  
+        <div style="display:flex;justify-content:space-between;align-items:center">  
+          <h2>Status Pesanan</h2>  
+          <div class="small muted">${state.orders.length} pesanan</div>  
+        </div>  
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:12px">  
+          ${state.orders.map(o=>`  
+            <div style="padding:12px;background:var(--surface);border-radius:12px;border:1px solid rgba(0,0,0,0.03)">  
+              <div style="display:flex;justify-content:space-between;align-items:center">  
+                <div>  
+                  <div style="font-weight:800">${o.orderId}</div>  
+                  <div class="small muted">${new Date(o.createdAt).toLocaleString()}</div>  
+                </div>  
+                <div style="text-align:right">  
+                  <div class="small muted">Total</div>  
+                  <div style="font-weight:900;color:var(--accent)">${formatRp(o.total)}</div>  
+                </div>  
+              </div>  
+              <div style="margin-top:10px">  
+                <div class="timeline">  
+                  ${renderOrderTimelineCompact(o.status)}  
+                </div>  
+              </div>  
+              <div style="display:flex;gap:8px;margin-top:10px">  
+                <button class="btn btn-ghost" onclick='viewOrder("${o.orderId}")'>Detail</button>  
+                <button class="btn btn-primary" onclick='simulateProgress("${o.orderId}")'>Update Status</button>  
+              </div>  
+            </div>  
+          `).join('')}  
+        </div>  
+      `;  
+    }  
+  
+    function attachOrdersEvents(){}  
+  
+    function renderOrderTimelineCompact(status){  
+      const steps = ["Dikemas","Dikirim","Selesai"];  
+      return steps.map(s=>`<div class="step ${s===status ? 'active' : (steps.indexOf(s) < steps.indexOf(status) ? 'active' : '')}">${s}</div>`).join('');  
+    }  
+  
+    function viewOrder(orderId){  
+      const ord = state.orders.find(o=>o.orderId===orderId);  
+      if(!ord) return toast("Pesanan tidak ditemukan");  
+      const modal = document.createElement('div');  
+      modal.className = 'overlay';  
+      modal.innerHTML = `  
+        <div class="modal" role="dialog" aria-modal="true">  
+          <div style="display:flex;justify-content:space-between;align-items:center">  
+            <strong>${ord.orderId}</strong>  
+            <button class="close-x" onclick="document.body.removeChild(this.closest('.overlay'))">✕</button>  
+          </div>  
+          <div style="margin-top:12px">  
+            <div class="small muted">Dibuat</div>  
+            <div style="font-weight:800">${new Date(ord.createdAt).toLocaleString()}</div>  
+          </div>  
+          <div style="margin-top:12px">  
+            <div class="small muted">Alamat</div>  
+            <div>${ord.address}</div>  
+          </div>  
+          <div style="margin-top:12px">  
+            <div class="small muted">Ringkasan Produk</div>  
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">  
+              ${ord.items.map(it=>`  
+                <div style="display:flex;gap:8px;align-items:center">  
+                  <img src="${it.img}" style="width:64px;height:64px;object-fit:cover;border-radius:8px">  
+                  <div style="flex:1">  
+                    <div style="font-weight:800">${it.name}</div>  
+                    <div class="small muted">Shade: ${it.shade||'-'} • Ukuran: ${it.size||'-'}</div>  
+                    <div style="margin-top:6px;font-weight:700">${formatRp(it.unitPrice)} × ${it.qty}</div>  
+                  </div>  
+                </div>  
+              `).join('')}  
+            </div>  
+          </div>  
+  
+          <div style="margin-top:12px">  
+            <div class="small muted">Timeline</div>  
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">  
+              ${ord.timeline.map(t=>`<div style="padding:8px;border-radius:8px;background:${t.status==='Selesai' ? 'linear-gradient(90deg,var(--primary),var(--accent))' : '#fff'};color:${t.status==='Selesai' ? '#fff' : 'inherit'}">${t.status} — ${new Date(t.at).toLocaleString()}</div>`).join('')}  
+            </div>  
+          </div>  
+        </div>  
+      `;  
+      document.body.appendChild(modal);  
+    }  
+  
+    /* Simulate status progression (for demo) */  
+    function simulateProgress(orderId){  
+      const ord = state.orders.find(o=>o.orderId===orderId);  
+      if(!ord) return toast("Pesanan tidak ditemukan");  
+      const next = ord.status === "Dikemas" ? "Dikirim" : (ord.status === "Dikirim" ? "Selesai" : "Selesai");  
+      ord.status = next;  
+      ord.timeline.push({status: next, at: new Date().toISOString()});  
+      saveState();  
+      renderMainView('orders');  
+      toast(`Status pesanan ${orderId} diperbarui: ${next}`);  
+    }  
+  
+    /* ----- Profile view ----- */  
+    function renderProfile(){  
+      const ordersCount = state.orders.length;  
+      return `  
+        <div style="display:flex;justify-content:space-between;align-items:center">  
+          <h2>Profil Saya</h2>  
+          <div class="small muted">Manage akun</div>  
+        </div>  
+  
+        <div style="margin-top:12px" class="profile-card">  
+          <img src="${state.user.avatar}" alt="avatar" class="avatar">  
+          <div style="flex:1">  
+            <div style="display:flex;justify-content:space-between;align-items:center">  
+              <div>  
+                <div style="font-weight:900">${state.user.username || 'Pengguna Baru'}</div>  
+                <div class="small muted">${state.user.email || '-'}</div>  
+              </div>  
+              <div style="text-align:right">  
+                <div class="member-badge">Beauty Member</div>  
+                <div class="small muted" style="margin-top:6px">Pesanan: <strong>${ordersCount}</strong></div>  
+              </div>  
+            </div>  
+            <div style="margin-top:10px">  
+              <div class="small muted">No. HP</div>  
+              <div style="font-weight:700">${state.user.phone || '-'}</div>  
+            </div>  
+            <div style="margin-top:6px">  
+              <div class="small muted">Alamat</div>  
+              <div>${state.user.address || '-'}</div>  
+            </div>  
+          </div>  
+        </div>  
+  
+        <div style="margin-top:12px;display:flex;gap:8px">  
+          <button class="btn btn-ghost" onclick="editProfile()">Edit Profil</button>  
+          <button class="btn btn-accent" onclick="confirmLogout()">Logout</button>  
+        </div>  
+  
+        <div style="margin-top:18px">  
+          <h3>Wishlist</h3>  
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">  
+            ${state.wishlist.length ? state.wishlist.map(id=>{  
+              const p = PRODUCTS.find(x=>x.id===id);  
+              return `<div style="background:var(--surface);padding:8px;border-radius:10px;border:1px solid rgba(0,0,0,0.03);display:flex;align-items:center;gap:8px">  
+                <img src="${p.img}" style="width:56px;height:56px;object-fit:cover;border-radius:8px">  
+                <div>  
+                  <div style="font-weight:700">${p.name}</div>  
+                  <div class="small muted">${formatRp(p.price)}</div>  
+                </div>  
+              </div>`;  
+            }).join('') : '<div class="muted">Belum ada wishlist</div>'}  
+          </div>  
+        </div>  
+      `;  
+    }  
+  
+    function attachProfileEvents(){}  
+  
+    function editProfile(inlineAddressOnly=false){  
+      // open modal to edit profile; inlineAddressOnly pre-fills address form only  
+      const modal = document.createElement('div');  
+      modal.className = 'overlay';  
+      modal.innerHTML = `  
+        <div class="modal">  
+          <div style="display:flex;justify-content:space-between;align-items:center">  
+            <strong>Edit Profil</strong>  
+            <button class="close-x" onclick="document.body.removeChild(this.closest('.overlay'))">✕</button>  
+          </div>  
+          <div style="margin-top:12px">  
+            ${!inlineAddressOnly ? `  
+              <label class="small muted">Email</label>  
+              <input class="input" id="editEmail" value="${state.user.email || ''}" placeholder="email@contoh.com">  
+              <label class="small muted" style="margin-top:8px">Username</label>  
+              <input class="input" id="editUsername" value="${state.user.username || ''}" placeholder="Nama panggilan">  
+              <label class="small muted" style="margin-top:8px">Nomor HP</label>  
+              <input class="input" id="editPhone" value="${state.user.phone || ''}" placeholder="08xx...">  
+            ` : ''}  
+            <label class="small muted" style="margin-top:8px">Alamat</label>  
+            <textarea class="input" id="editAddress" rows="3">${state.user.address || ''}</textarea>  
+            <div style="display:flex;gap:8px;margin-top:12px">  
+              <button class="btn btn-ghost" onclick="document.body.removeChild(this.closest('.overlay'))">Batal</button>  
+              <button class="btn btn-accent" onclick="saveProfile(${inlineAddressOnly})">Simpan</button>  
+            </div>  
+          </div>  
+        </div>  
+      `;  
+      document.body.appendChild(modal);  
+    }  
+  
+    function saveProfile(addressOnly){  
+      const modal = document.querySelector('.overlay .modal');  
+      const overlay = document.querySelector('.overlay');  
+      const emailEl = document.getElementById('editEmail');  
+      const userEl = document.getElementById('editUsername');  
+      const phoneEl = document.getElementById('editPhone');  
+      const addrEl = document.getElementById('editAddress');  
+      if(!addrEl) return;  
+      if(!addressOnly){  
+        state.user.email = emailEl.value || state.user.email;  
+        state.user.username = userEl.value || state.user.username;  
+        state.user.phone = phoneEl.value || state.user.phone;  
+      }  
+      state.user.address = addrEl.value || state.user.address;  
+      state.loggedIn = true;  
+      saveState();  
+      if(overlay) document.body.removeChild(overlay);  
+      renderMainView(currentRoute);  
+      toast('Profil diperbarui');  
+    }  
+  
+    function confirmLogout(){  
+      const modal = document.createElement('div');  
+      modal.className = 'overlay';  
+      modal.innerHTML = `  
+        <div class="onboard-steps" style="max-width:420px;">  
+          <h3>Konfirmasi Logout</h3>  
+          <p class="small muted">Logout akan menghapus seluruh data aplikasi (keranjang, wishlist, pesanan) dan kembali ke onboarding.</p>  
+          <div style="display:flex;gap:8px;margin-top:12px">  
+            <button class="btn btn-ghost" onclick="document.body.removeChild(this.closest('.overlay'))">Batal</button>  
+            <button class="btn btn-accent" onclick="doLogout()">Logout & Hapus Data</button>  
+          </div>  
+        </div>  
+      `;  
+      document.body.appendChild(modal);  
+    }  
+  
+    function doLogout(){  
+      localStorage.removeItem(STORAGE_KEY);  
+      state = {  
+        user: { email: null, username: null, phone: null, address: "Jl. Cantik No.1, Jakarta", avatar: "https://source.unsplash.com/100x100/?woman,portrait" },  
+        loggedIn: false,  
+        cart: [],  
+        wishlist: [],  
+        orders: []  
+      };  
+      saveState();  
+      // Close overlays  
+      document.querySelectorAll('.overlay').forEach(o=>o.remove());  
+      showOnboarding(0);  
+      toast('Semua data dihapus. Sampai jumpa!');  
+    }  
+  
+    /* ----- Onboarding Wizard ----- */  
+    function showOnboarding(step=0){  
+      // render overlay for multi-step  
+      const overlay = document.createElement('div');  
+      overlay.className = 'overlay';  
+      overlay.innerHTML = `  
+        <div class="onboard-steps">  
+          <h2 style="margin:0">Selamat Datang di Rara Cosmetics</h2>  
+          <div class="small muted" style="margin-top:6px">Lengkapi beberapa data singkat untuk mulai berbelanja</div>  
+  
+          <div id="step0" class="onboard-step ${step===0?'active':''}">  
+            <label class="small muted">Email</label>  
+            <input id="onEmail" class="input" type="email" placeholder="email@contoh.com" value="${state.user.email || ''}">  
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">  
+              <div class="step-dots">  
+                <div class="dot active"></div><div class="dot"></div><div class="dot"></div>  
+              </div>  
+              <button class="btn btn-accent" onclick="onboardNext(0)">Lanjut</button>  
+            </div>  
+          </div>  
+  
+          <div id="step1" class="onboard-step ${step===1?'active':''}">  
+            <label class="small muted">Username</label>  
+            <input id="onUser" class="input" placeholder="Nama panggilan" value="${state.user.username || ''}">  
+            <label class="small muted" style="margin-top:8px">Password</label>  
+            <input id="onPass" class="input" type="password" placeholder="Buat password">  
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">  
+              <button class="btn btn-ghost" onclick="onboardPrev(1)">Kembali</button>  
+              <div class="step-dots">  
+                <div class="dot"></div><div class="dot active"></div><div class="dot"></div>  
+              </div>  
+              <button class="btn btn-accent" onclick="onboardNext(1)">Lanjut</button>  
+            </div>  
+          </div>  
+  
+          <div id="step2" class="onboard-step ${step===2?'active':''}">  
+            <label class="small muted">Nomor Telepon</label>  
+            <input id="onPhone" class="input" placeholder="08xx..." value="${state.user.phone || ''}">  
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">  
+              <button class="btn btn-ghost" onclick="onboardPrev(2)">Kembali</button>  
+              <div class="step-dots">  
+                <div class="dot"></div><div class="dot"></div><div class="dot active"></div>  
+              </div>  
+              <button class="btn btn-accent" onclick="finishOnboard()">Selesai</button>  
+            </div>  
+          </div>  
+        </div>  
+      `;  
+      document.body.appendChild(overlay);  
+    }  
+  
+    function onboardNext(i){  
+      document.getElementById(`step${i}`).classList.remove('active');  
+      document.getElementById(`step${i+1}`).classList.add('active');  
+    }  
+    function onboardPrev(i){  
+      document.getElementById(`step${i}`).classList.remove('active');  
+      document.getElementById(`step${i-1}`).classList.add('active');  
+    }  
+    function finishOnboard(){  
+      const email = document.getElementById('onEmail')?.value || state.user.email;  
+      const username = document.getElementById('onUser')?.value || state.user.username || ('RaraUser' + Math.floor(Math.random()*99));  
+      const phone = document.getElementById('onPhone')?.value || state.user.phone;  
+      // Basic validation  
+      if(!email || !username || !phone){ return toast('Lengkapi semua data onboarding'); }  
+      state.user.e
