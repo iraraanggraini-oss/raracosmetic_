@@ -1106,4 +1106,53 @@
       const phone = document.getElementById('onPhone')?.value || state.user.phone;  
       // Basic validation  
       if(!email || !username || !phone){ return toast('Lengkapi semua data onboarding'); }  
-      state.user.e
+      state.user.email = email;  
+      state.user.username = username;  
+      state.user.phone = phone;  
+      state.loggedIn = true;  
+      saveState();  
+      // remove overlay  
+      document.querySelectorAll('.overlay').forEach(o=>o.remove());  
+      toast('Selamat datang, ' + username);  
+      navigate('home');  
+    }  
+  
+    /* ----- Init & boot ----- */  
+    function init(){  
+      loadState();  
+      // If not logged in, show onboarding  
+      if(!state.loggedIn){  
+        // Wait a tick then show onboarding  
+        setTimeout(()=> showOnboarding(0), 220);  
+      }  
+      // Default view  
+      navigate('home');  
+      // Update header counts  
+      updateHeaderCount();  
+      // Attach global click to close possible leftover overlays when clicking outside modal (non-invasive)  
+      document.addEventListener('click', (e)=>{ /* reserved */ });  
+    }  
+  
+    // Start  
+    init();  
+  
+    /* Expose some functions to inline onclick handlers */  
+    window.openProductDetail = openProductDetail;  
+    window.addToCart = addToCart;  
+    window.buyDirect = buyDirect;  
+    window.navigate = navigate;  
+    window.changeQty = changeQty;  
+    window.removeCartItem = removeCartItem;  
+    window.clearCart = clearCart;  
+    window.proceedToCheckout = proceedToCheckout;  
+    window.confirmCheckout = confirmCheckout;  
+    window.viewOrder = viewOrder;  
+    window.simulateProgress = simulateProgress;  
+    window.addToWishlist = addToWishlist;  
+    window.editProfile = editProfile;  
+    window.confirmLogout = confirmLogout;  
+    window.doLogout = doLogout;  
+    window.showOnboarding = showOnboarding;  
+  </script>  
+</body>  
+</html>
