@@ -530,4 +530,92 @@ return "Rp " + (n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
               <div class="small muted">Beauty Member</div>
               <div class="member-badge">Gold</div>
             </div>
+</div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <h3>Best Seller</h3>
+            <div class="view-more" onclick="toast('Lihat semua Best Seller (coming soon)')">Lihat semua</div>
+          </div>
+          <div class="h-scroll" id="bestScroll">
+            ${best.map(p=>`
+              <div class="card-product" data-id="${p.id}" onclick="openProductDetail('${p.id}')">
+                <img src="${p.img}" alt="${p.name}">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <div class="name">${p.name}</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div class="price">${formatRp(p.price)}</div>
+                    <div class="rating">${renderStars(p.rating)}</div>
+                  </div>
+                </div>
+                <div class="card-bottom">
+                  <button class="btn btn-ghost" onclick="event.stopPropagation(); addToWishlist('${p.id}');">♡</button>
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-primary" onclick="event.stopPropagation(); addToCart('${p.id}', {shade: (PRODUCTS.find(x=>x.id==='${p.id}').shades||[])[0], size:(PRODUCTS.find(x=>x.id==='${p.id}').sizes||[])[0]});">+ Keranjang</button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <h3>Koleksi Pilihan</h3>
+            <div class="view-more" onclick="navigate('collections')">Lihat semua</div>
+          </div>
+          <div class="grid">
+            ${grid.map(p=>`
+              <div class="card-product" style="min-height:220px;cursor:pointer" onclick="openProductDetail('${p.id}')">
+                <img src="${p.img}" alt="${p.name}">
+                <div class="name">${p.name}</div>
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div class="small muted">${p.sold} terjual</div>
+                  <div class="price">${formatRp(p.price)}</div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:auto">
+                  <button class="btn btn-ghost" onclick="event.stopPropagation(); addToWishlist('${p.id}');">♡ Wishlist</button>
+                  <button class="btn btn-primary" style="flex:1" onclick="event.stopPropagation(); addToCart('${p.id}', {shade: (PRODUCTS.find(x=>x.id==='${p.id}').shades||[])[0], size:(PRODUCTS.find(x=>x.id==='${p.id}').sizes||[])[0]});">+ Keranjang</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function attachHomeEvents(){
+      // make horizontal scroll momentum nice (no-op basic)
+    }
+
+    /* ----- Collections view ----- */
+    function renderCollections(){
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2>Koleksi</h2>
+          <div class="small muted">Total ${PRODUCTS.length} produk</div>
+        </div>
+        <div class="grid" style="margin-top:12px">
+          ${PRODUCTS.map(p=>`
+            <div class="card-product" onclick="openProductDetail('${p.id}')">
+              <img src="${p.img}" alt="${p.name}">
+              <div class="name">${p.name}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div class="small muted">${p.sold} terjual</div>
+                <div class="price">${formatRp(p.price)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    function attachCollectionsEvents(){}
+
+    /* ----- Cart view ----- */
+    function renderCart(){
+      if(!state.cart.length){
+        return `
+          <div style="padding:28px;text-align:center">
+
 
