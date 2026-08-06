@@ -420,3 +420,114 @@ return "Rp " + (n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
                 <div style="margin-left:auto;display:flex;gap:8px">
                   <button class="btn btn-primary" id="modalAddCartBtn">+ Keranjang</button>
                   <button class="btn btn-accent" id="modalBuyBtn">Beli Sekarang</button>
+</div>
+              </div>
+
+              <div style="margin-top:12px">
+                <div class="small muted">Ulasan Pelanggan</div>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                  ${product.reviews.map(r=>`
+                    <div class="review">
+                      <img class="av" src="${r.avatar}" alt="${r.name}">
+                      <div style="flex:1">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                          <div style="font-weight:700">${r.name}</div>
+                          <div class="rating">${renderStars(r.rating)}</div>
+                        </div>
+                        <div class="small muted" style="margin-top:6px">${r.comment}</div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      // Render variants
+      const selShadeEl = modal.querySelector('#modalShades');
+      const selSizeEl = modal.querySelector('#modalSizes');
+      const shadeState = {shade: product.shades && product.shades.length ? product.shades[0] : null, size: product.sizes && product.sizes.length ? product.sizes[0] : null};
+
+      (product.shades || []).forEach(s=>{
+        const b = document.createElement('button');
+        b.className = 'variant-pill';
+        b.textContent = s;
+        b.onclick = ()=>{
+          shadeState.shade = s;
+          modal.querySelectorAll('.variant-pill').forEach(x=>x.style.boxShadow='none');
+          b.style.boxShadow = '0 8px 20px rgba(236,64,122,0.12)';
+        };
+        selShadeEl.appendChild(b);
+      });
+      (product.sizes || []).forEach(s=>{
+        const b = document.createElement('button');
+        b.className = 'size-pill';
+        b.textContent = s;
+        b.onclick = ()=>{
+          shadeState.size = s;
+          modal.querySelectorAll('.size-pill').forEach(x=>x.style.boxShadow='none');
+          b.style.boxShadow = '0 8px 20px rgba(236,64,122,0.12)';
+        };
+        selSizeEl.appendChild(b);
+      });
+
+      const addBtn = modal.querySelector('#modalAddCartBtn');
+      const buyBtn = modal.querySelector('#modalBuyBtn');
+      addBtn.onclick = ()=>{ addToCart(productId, shadeState, 1); document.body.removeChild(modal); }
+      buyBtn.onclick = ()=>{ buyDirect(productId, shadeState, 1); document.body.removeChild(modal); }
+    }
+
+    function renderStars(rating){
+      const full = Math.round(rating);
+      return Array.from({length:5}).map((_,i)=> i<full ? '★' : '☆').join('');
+    }
+
+    /* ---------- Views rendering ---------- */
+    function renderMainView(route, opts={}){
+      const el = document.getElementById("app");
+      if(!el) return;
+      if(route==='home'){
+        el.innerHTML = renderHome();
+        attachHomeEvents();
+      } else if(route==='collections'){
+        el.innerHTML = renderCollections();
+        attachCollectionsEvents();
+      } else if(route==='cart'){
+        el.innerHTML = renderCart();
+        attachCartEvents();
+      } else if(route==='profile'){
+        el.innerHTML = renderProfile();
+        attachProfileEvents();
+      } else if(route==='checkout'){
+        el.innerHTML = renderCheckout();
+        attachCheckoutEvents();
+      } else if(route==='orders'){
+        el.innerHTML = renderOrders();
+        attachOrdersEvents();
+      } else {
+        el.innerHTML = `<div style="padding:18px">View not found</div>`;
+      }
+      updateHeaderCount();
+    }
+
+    /* ----- Home view ----- */
+    function renderHome(){
+      // Best sellers: top sold
+      const best = [...PRODUCTS].sort((a,b)=>b.sold - a.sold).slice(0,8);
+      // Collections: all products
+      const grid = PRODUCTS;
+      return `
+        <div class="hero">
+          <div style="flex:1">
+            <div class="hi">Selamat datang${state.loggedIn && state.user.username ? ', ' + state.user.username : ''}</div>
+            <div class="offer">Temukan kecantikanmu — Soft Pink, Soft Touch</div>
+          </div>
+          <div>
+            <div style="text-align:right">
+              <div class="small muted">Beauty Member</div>
+              <div class="member-badge">Gold</div>
+            </div>
+
