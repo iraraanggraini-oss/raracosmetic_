@@ -276,4 +276,439 @@
         avatar: "https://source.unsplash.com/100x100/?woman,portrait"  
       },  
       loggedIn: false,  
-      cart: [], // item
+      cart: [], // items: {uid, productId, shade, size, qty, unitPrice}  
+      wishlist: [],  
+      orders: [], // {orderId, items, address, total, status, createdAt}  
+    };  
+  
+    /* Persist & load */  
+    function loadState(){  
+      try {  
+        const raw = localStorage.getItem(STORAGE_KEY);  
+        if(raw){ state = JSON.parse(raw); }  
+      } catch(e){ console.error("Load state failed",e); }  
+    }  
+    function saveState(){  
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); updateHeaderCount(); } catch(e){}  
+    }  
+  
+    /* Utilities */  
+    function formatRp(n){  
+      return "Rp " + (n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");  
+    }  
+    function uid(prefix="i"){  
+      return prefix + "-" + Math.random().toString(36).slice(2,9);  
+    }  
+    function genOrderId(){  
+      const rnd = Math.floor(100000 + Math.random()*900000);  
+      return `#RRC-${rnd}`;  
+    }  
+  
+    /* Toast */  
+    let toastTimer = null;  
+    function toast(text, ms=2200){  
+      const el = document.getElementById("toastEl");  
+      el.innerHTML = `<strong style="color:var(--accent);margin-right:8px">Rara</strong> ${text}`;  
+      el.classList.add("show");  
+      if(toastTimer) clearTimeout(toastTimer);  
+      toastTimer = setTimeout(()=> el.classList.remove("show"), ms);  
+    }  
+  
+    /* Navigation SPA */  
+    let currentRoute = 'home';  
+    function setActiveNav(route){  
+      document.querySelectorAll('.bottom-nav .nav-item').forEach(item=>{  
+        item.classList.toggle('active', item.dataset.route===route);  
+      });  
+    }  
+    function navigate(route, opts={}){  
+      currentRoute = route;  
+      setActiveNav(route);  
+      renderMainView(route, opts);  
+    }  
+  
+    /* Header update */  
+    function updateHeaderCount(){  
+      const totalQty = state.cart.reduce((s,i)=>s+i.qty,0);  
+      const btn = document.getElementById("cartCountBtn");  
+      if(btn) btn.setAttribute("data-count", totalQty);  
+    }  
+  
+    /* Add to cart handler */  
+    function addToCart(productId, variant={shade:null,size:null}, qty=1){  
+      const product = PRODUCTS.find(p=>p.id===productId);  
+      if(!product) return;  
+      // Keep variant info  
+      const existing = state.cart.find(i=>i.productId===productId && i.shade===variant.shade && i.size===variant.size);  
+      if(existing){  
+        existing.qty += qty;  
+      } else {  
+        state.cart.push({  
+          uid: uid("cart"),  
+          productId: productId,  
+          name: product.name,  
+          shade: variant.shade,  
+          size: variant.size,  
+          qty: qty,  
+          unitPrice: product.price,  
+          img: product.img  
+        });  
+      }  
+      saveState();  
+      toast("Berhasil ditambahkan ke keranjang");  
+      renderMainView(currentRoute);  
+    }  
+  
+    /* Buy direct -> go to checkout with single product */  
+    function buyDirect(productId, variant={shade:null,size:null}, qty=1){  
+      const product = PRODUCTS.find(p=>p.id===productId);  
+      if(!product) return;  
+      // Prepare a temporary checkout state in sessionStorage to avoid mutating cart  
+      const checkoutPayload = {  
+        items: [{ uid: uid("buy"), productId: productId, name: product.name, shade:variant.shade, size:variant.size, qty, unitPrice:product.price, img:product.img }],  
+        fromCart:false  
+      };  
+      sessionStorage.setItem("rara_checkout", JSON.stringify(checkoutPayload));  
+      navigate('checkout');  
+    }  
+  
+    /* Open product detail modal */  
+    function openProductDetail(productId){  
+      const product = PRODUCTS.find(p=>p.id===productId);  
+      if(!product) return;  
+      const modal = document.createElement('div');  
+      modal.className = 'overlay';  
+      modal.innerHTML = `  
+        <div class="modal" role="dialog" aria-modal="true">  
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">  
+            <strong style="font-size:18px">${product.name}</strong>  
+            <button class="close-x" title="Tutup" onclick="document.body.removeChild(this.closest('.overlay'));">✕</button>  
+          </div>  
+          <div class="product-gallery" style="flex-direction:column">  
+            <div class="product-main-img">  
+              <img src="${product.img}" alt="${product.name}" style="width:100%;height:320px;object-fit:cover;border-radius:12px">  
+            </div>  
+            <div style="display:flex;gap:12px;margin-top:12px;flex-direction:column">  
+              <div style="display:flex;justify-content:space-between;align-items:center">  
+                <div style="display:flex;flex-direction:column;gap:6px">  
+                  <div style="font-weight:800;color:var(--accent);font-size:18px">${formatRp(product.price)}</div>  
+                  <div class="rating">${renderStars(product.rating)} <span class="small muted"> | ${product.sold} terjual</span></div>  
+                </div>  
+                <div style="text-align:right">  
+                  <div class="small muted">Kategori</div>  
+                  <div style="font-weight:700">${product.category}</div>  
+                </div>  
+              </div>  
+  
+              <div>  
+                <div class="small muted">Deskripsi</div>  
+                <div style="margin-top:6px">${product.description}</div>  
+              </div>  
+  
+              <div>  
+                <div class="small muted">Shade / Warna</div>  
+                <div class="variants" id="modalShades"></div>  
+              </div>  
+  
+              <div>  
+                <div class="small muted">Ukuran / Berat</div>  
+                <div class="variants" id="modalSizes"></div>  
+              </div>  
+  
+              <div style="display:flex;gap:8px;margin-top:6px">  
+                <button class="btn btn-ghost" onclick="document.body.removeChild(this.closest('.overlay'))">Tutup</button>  
+                <div style="margin-left:auto;display:flex;gap:8px">  
+                  <button class="btn btn-primary" id="modalAddCartBtn">+ Keranjang</button>  
+                  <button class="btn btn-accent" id="modalBuyBtn">Beli Sekarang</button>  
+                </div>  
+              </div>  
+  
+              <div style="margin-top:12px">  
+                <div class="small muted">Ulasan Pelanggan</div>  
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">  
+                  ${product.reviews.map(r=>`  
+                    <div class="review">  
+                      <img class="av" src="${r.avatar}" alt="${r.name}">  
+                      <div style="flex:1">  
+                        <div style="display:flex;justify-content:space-between;align-items:center">  
+                          <div style="font-weight:700">${r.name}</div>  
+                          <div class="rating">${renderStars(r.rating)}</div>  
+                        </div>  
+                        <div class="small muted" style="margin-top:6px">${r.comment}</div>  
+                      </div>  
+                    </div>  
+                  `).join('')}  
+                </div>  
+              </div>  
+            </div>  
+          </div>  
+        </div>  
+      `;  
+      document.body.appendChild(modal);  
+  
+      // Render variants  
+      const selShadeEl = modal.querySelector('#modalShades');  
+      const selSizeEl = modal.querySelector('#modalSizes');  
+      const shadeState = {shade: product.shades && product.shades.length ? product.shades[0] : null, size: product.sizes && product.sizes.length ? product.sizes[0] : null};  
+  
+      (product.shades || []).forEach(s=>{  
+        const b = document.createElement('button');  
+        b.className = 'variant-pill';  
+        b.textContent = s;  
+        b.onclick = ()=>{  
+          shadeState.shade = s;  
+          modal.querySelectorAll('.variant-pill').forEach(x=>x.style.boxShadow='none');  
+          b.style.boxShadow = '0 8px 20px rgba(236,64,122,0.12)';  
+        };  
+        selShadeEl.appendChild(b);  
+      });  
+      (product.sizes || []).forEach(s=>{  
+        const b = document.createElement('button');  
+        b.className = 'size-pill';  
+        b.textContent = s;  
+        b.onclick = ()=>{  
+          shadeState.size = s;  
+          modal.querySelectorAll('.size-pill').forEach(x=>x.style.boxShadow='none');  
+          b.style.boxShadow = '0 8px 20px rgba(236,64,122,0.12)';  
+        };  
+        selSizeEl.appendChild(b);  
+      });  
+  
+      const addBtn = modal.querySelector('#modalAddCartBtn');  
+      const buyBtn = modal.querySelector('#modalBuyBtn');  
+      addBtn.onclick = ()=>{ addToCart(productId, shadeState, 1); document.body.removeChild(modal); }  
+      buyBtn.onclick = ()=>{ buyDirect(productId, shadeState, 1); document.body.removeChild(modal); }  
+    }  
+  
+    function renderStars(rating){  
+      const full = Math.round(rating);  
+      return Array.from({length:5}).map((_,i)=> i<full ? '★' : '☆').join('');  
+    }  
+  
+    /* ---------- Views rendering ---------- */  
+    function renderMainView(route, opts={}){  
+      const el = document.getElementById("app");  
+      if(!el) return;  
+      if(route==='home'){  
+        el.innerHTML = renderHome();  
+        attachHomeEvents();  
+      } else if(route==='collections'){  
+        el.innerHTML = renderCollections();  
+        attachCollectionsEvents();  
+      } else if(route==='cart'){  
+        el.innerHTML = renderCart();  
+        attachCartEvents();  
+      } else if(route==='profile'){  
+        el.innerHTML = renderProfile();  
+        attachProfileEvents();  
+      } else if(route==='checkout'){  
+        el.innerHTML = renderCheckout();  
+        attachCheckoutEvents();  
+      } else if(route==='orders'){  
+        el.innerHTML = renderOrders();  
+        attachOrdersEvents();  
+      } else {  
+        el.innerHTML = `<div style="padding:18px">View not found</div>`;  
+      }  
+      updateHeaderCount();  
+    }  
+  
+    /* ----- Home view ----- */  
+    function renderHome(){  
+      // Best sellers: top sold  
+      const best = [...PRODUCTS].sort((a,b)=>b.sold - a.sold).slice(0,8);  
+      // Collections: all products  
+      const grid = PRODUCTS;  
+      return `  
+        <div class="hero">  
+          <div style="flex:1">  
+            <div class="hi">Selamat datang${state.loggedIn && state.user.username ? ', ' + state.user.username : ''}</div>  
+            <div class="offer">Temukan kecantikanmu — Soft Pink, Soft Touch</div>  
+          </div>  
+          <div>  
+            <div style="text-align:right">  
+              <div class="small muted">Beauty Member</div>  
+              <div class="member-badge">Gold</div>  
+            </div>  
+          </div>  
+        </div>  
+  
+        <div class="section">  
+          <div class="section-head">  
+            <h3>Best Seller</h3>  
+            <div class="view-more" onclick="toast('Lihat semua Best Seller (coming soon)')">Lihat semua</div>  
+          </div>  
+          <div class="h-scroll" id="bestScroll">  
+            ${best.map(p=>`  
+              <div class="card-product" data-id="${p.id}" onclick="openProductDetail('${p.id}')">  
+                <img src="${p.img}" alt="${p.name}">  
+                <div style="display:flex;flex-direction:column;gap:4px">  
+                  <div class="name">${p.name}</div>  
+                  <div style="display:flex;align-items:center;justify-content:space-between">  
+                    <div class="price">${formatRp(p.price)}</div>  
+                    <div class="rating">${renderStars(p.rating)}</div>  
+                  </div>  
+                </div>  
+                <div class="card-bottom">  
+                  <button class="btn btn-ghost" onclick="event.stopPropagation(); addToWishlist('${p.id}');">♡</button>  
+                  <div style="display:flex;gap:6px">  
+                    <button class="btn btn-primary" onclick="event.stopPropagation(); addToCart('${p.id}', {shade: (PRODUCTS.find(x=>x.id==='${p.id}').shades||[])[0], size:(PRODUCTS.find(x=>x.id==='${p.id}').sizes||[])[0]});">+ Keranjang</button>  
+                  </div>  
+                </div>  
+              </div>  
+            `).join('')}  
+          </div>  
+        </div>  
+  
+        <div class="section">  
+          <div class="section-head">  
+            <h3>Koleksi Pilihan</h3>  
+            <div class="view-more" onclick="navigate('collections')">Lihat semua</div>  
+          </div>  
+          <div class="grid">  
+            ${grid.map(p=>`  
+              <div class="card-product" style="min-height:220px;cursor:pointer" onclick="openProductDetail('${p.id}')">  
+                <img src="${p.img}" alt="${p.name}">  
+                <div class="name">${p.name}</div>  
+                <div style="display:flex;justify-content:space-between;align-items:center">  
+                  <div class="small muted">${p.sold} terjual</div>  
+                  <div class="price">${formatRp(p.price)}</div>  
+                </div>  
+                <div style="display:flex;gap:8px;margin-top:auto">  
+                  <button class="btn btn-ghost" onclick="event.stopPropagation(); addToWishlist('${p.id}');">♡ Wishlist</button>  
+                  <button class="btn btn-primary" style="flex:1" onclick="event.stopPropagation(); addToCart('${p.id}', {shade: (PRODUCTS.find(x=>x.id==='${p.id}').shades||[])[0], size:(PRODUCTS.find(x=>x.id==='${p.id}').sizes||[])[0]});">+ Keranjang</button>  
+                </div>  
+              </div>  
+            `).join('')}  
+          </div>  
+        </div>  
+      `;  
+    }  
+  
+    function attachHomeEvents(){  
+      // make horizontal scroll momentum nice (no-op basic)  
+    }  
+  
+    /* ----- Collections view ----- */  
+    function renderCollections(){  
+      return `  
+        <div style="display:flex;justify-content:space-between;align-items:center">  
+          <h2>Koleksi</h2>  
+          <div class="small muted">Total ${PRODUCTS.length} produk</div>  
+        </div>  
+        <div class="grid" style="margin-top:12px">  
+          ${PRODUCTS.map(p=>`  
+            <div class="card-product" onclick="openProductDetail('${p.id}')">  
+              <img src="${p.img}" alt="${p.name}">  
+              <div class="name">${p.name}</div>  
+              <div style="display:flex;justify-content:space-between;align-items:center">  
+                <div class="small muted">${p.sold} terjual</div>  
+                <div class="price">${formatRp(p.price)}</div>  
+              </div>  
+            </div>  
+          `).join('')}  
+        </div>  
+      `;  
+    }  
+    function attachCollectionsEvents(){}  
+  
+    /* ----- Cart view ----- */  
+    function renderCart(){  
+      if(!state.cart.length){  
+        return `  
+          <div style="padding:28px;text-align:center">  
+            <img src="https://source.unsplash.com/400x300/?shopping-bag,cosmetics" alt="empty" style="width:100%;max-width:320px;border-radius:12px;object-fit:cover">  
+            <h3 style="margin-top:12px">Keranjang Kosong</h3>  
+            <div class="muted">Tambahkan produk favoritmu dan checkout cepat.</div>  
+            <div style="margin-top:12px"><button class="btn btn-primary" onclick="navigate('home')">Belanja Sekarang</button></div>  
+          </div>  
+        `;  
+      }  
+      const itemsHtml = state.cart.map(i=>`  
+        <div class="cart-item" data-uid="${i.uid}">  
+          <input type="checkbox" class="cart-checkbox" style="width:20px;height:20px" checked>  
+          <img src="${i.img}" alt="${i.name}">  
+          <div class="meta">  
+            <div style="display:flex;justify-content:space-between;align-items:center">  
+              <div style="font-weight:800">${i.name}</div>  
+              <div style="color:var(--accent);font-weight:800">${formatRp(i.unitPrice)}</div>  
+            </div>  
+            <div class="small muted" style="margin-top:6px">Shade: ${i.shade || '-'} • Ukuran: ${i.size || '-'}</div>  
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">  
+              <div class="qty-controls">  
+                <button class="btn btn-ghost" onclick="changeQty('${i.uid}', -1)">−</button>  
+                <div style="min-width:30px;text-align:center;font-weight:700">${i.qty}</div>  
+                <button class="btn btn-ghost" onclick="changeQty('${i.uid}', 1)">+</button>  
+                <button class="btn" style="background:transparent;color:#f45;font-weight:700" onclick="removeCartItem('${i.uid}')">Hapus</button>  
+              </div>  
+              <div class="small muted">Subtotal: <strong>${formatRp(i.unitPrice * i.qty)}</strong></div>  
+            </div>  
+          </div>  
+        </div>  
+      `).join('');  
+  
+      const subtotal = state.cart.reduce((s,i)=>s + i.unitPrice * i.qty, 0);  
+      const shipping = state.cart.length ? Number(getComputedStyle(document.documentElement).getPropertyValue('--shipping') || 20000) : 0;  
+      const total = subtotal + (state.cart.length ? shipping : 0);  
+  
+      return `  
+        <div style="display:flex;justify-content:space-between;align-items:center">  
+          <h2>Keranjang Belanja</h2>  
+          <div class="small muted">${state.cart.length} item</div>  
+        </div>  
+        <div style="margin-top:12px" class="cart-list">  
+          ${itemsHtml}  
+        </div>  
+  
+        <div style="margin-top:16px;padding:12px;background:var(--surface);border-radius:12px;border:1px solid rgba(0,0,0,0.03)">  
+          <div class="spaced"><div class="small muted">Subtotal</div><div><strong>${formatRp(subtotal)}</strong></div></div>  
+          <div class="spaced" style="margin-top:8px"><div class="small muted">Ongkos Kirim</div><div><strong>${formatRp(shipping)}</strong></div></div>  
+          <div class="spaced" style="margin-top:12px"><div style="font-weight:800">Total</div><div style="font-weight:900;color:var(--accent)">${formatRp(total)}</div></div>  
+          <div style="display:flex;gap:8px;margin-top:12px">  
+            <button class="btn btn-ghost" onclick="clearCart()">Kosongkan</button>  
+            <button class="btn btn-accent" style="flex:1" onclick="proceedToCheckout()">Checkout</button>  
+          </div>  
+        </div>  
+      `;  
+    }  
+  
+    function attachCartEvents(){  
+      // nothing to attach by selector; events inline call functions  
+    }  
+  
+    function changeQty(uid, delta){  
+      const item = state.cart.find(i=>i.uid===uid);  
+      if(!item) return;  
+      item.qty = Math.max(1, item.qty + delta);  
+      saveState(); renderMainView('cart');  
+    }  
+    function removeCartItem(uid){  
+      state.cart = state.cart.filter(i=>i.uid!==uid);  
+      saveState(); renderMainView('cart'); toast('Produk dihapus dari keranjang');  
+    }  
+    function clearCart(){  
+      if(!confirm('Yakin ingin mengosongkan keranjang?')) return;  
+      state.cart = [];  
+      saveState(); renderMainView('cart'); toast('Keranjang dikosongkan');  
+    }  
+    function proceedToCheckout(){  
+      if(!state.cart.length){ toast('Keranjang kosong'); return; }  
+      const checkoutPayload = { items: state.cart.map(i=>({...i})), fromCart:true };  
+      sessionStorage.setItem("rara_checkout", JSON.stringify(checkoutPayload));  
+      navigate('checkout');  
+    }  
+  
+    /* ----- Wishlist ----- */  
+    function addToWishlist(productId){  
+      if(state.wishlist.includes(productId)){ toast('Sudah ada di Wishlist'); return; }  
+      state.wishlist.push(productId); saveState();  
+      toast('Ditambahkan ke Wishlist');  
+    }  
+  
+    /* ----- Checkout ----- */  
+    function renderCheckout(){  
+      const raw = sessionStorage.getItem("rara_checkout");  
+      if(!raw) return `<div style="padding:18px">Tidak ada data checkout. Kembali ke keranjang.</div>`;  
+      const payload = JSON.parse(raw);  
+      const items = payload.items;  
+     
