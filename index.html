@@ -232,27 +232,31 @@
      * Mobile-first, responsive, no-backend. All state persisted in localStorage.  
      ************************************************************************/  
   
-    /* ---------- Sample product data ---------- */  
-    const PRODUCTS = [  
-      { id: "cushion-01", name: "Cushion Dewy Finish", category:"Cushion", price:169000, description:"Finishing lembut, coverage medium, efek dewy natural.", rating:4.7, sold:1245, img: "https://source.unsplash.com/600x600/?cushion,cosmetics", shades:["N21","N23","N25"], sizes:["15 g"], reviews: sampleReviews("Cushion Dewy Finish") },  
-      { id: "liptint-01", name: "Rara Lip Tint", category:"Lip Tint", price:89000, description:"Warna intens, ringan, tahan lama.", rating:4.5, sold:2150, img: "https://source.unsplash.com/600x600/?lip-tint,lips", shades:["Coral","Rose","Berry"], sizes:["4 g"], reviews: sampleReviews("Rara Lip Tint") },  
-      { id: "lipcream-01", name: "Smooth Lip Cream", category:"Lip Cream", price:99000, description:"Creamy finish, matte lembut.", rating:4.4, sold:980, img: "https://source.unsplash.com/600x600/?lipstick,cosmetics", shades:["Peach","Nude","Red"], sizes:["5 g"], reviews: sampleReviews("Smooth Lip Cream") },  
-      { id: "lipgloss-01", name: "Glossy Shine Lip Gloss", category:"Lip Gloss", price:76000, description:"Kilau sehat, non-sticky.", rating:4.3, sold:450, img: "https://source.unsplash.com/600x600/?lip-gloss,makeup", shades:["Clear","Pink","Gold"], sizes:["6 ml"], reviews: sampleReviews("Glossy Shine Lip Gloss") },  
-      { id: "foundation-01", name: "Longwear Foundation", category:"Foundation", price:199000, description:"Coverage full, tahan lembap seharian.", rating:4.6, sold:870, img: "https://source.unsplash.com/600x600/?foundation,makeup", shades:["Ivory","Beige","Tan"], sizes:["30 ml","50 ml"], reviews: sampleReviews("Longwear Foundation") },  
-      { id: "compact-01", name: "Matte Compact Powder", category:"Compact Powder", price:119000, description:"Menyerap minyak, cocok oily skin.", rating:4.2, sold:640, img: "https://source.unsplash.com/600x600/?compact-powder,makeup", shades:["Translucent","Light","Medium"], sizes:["9 g"], reviews: sampleReviews("Matte Compact Powder") },  
-      { id: "loose-01", name: "Fine Loose Powder", category:"Loose Powder", price:129000, description:"Hasil halus, tak terasa berat.", rating:4.3, sold:520, img: "https://source.unsplash.com/600x600/?loose-powder,cosmetics", shades:["Translucent"], sizes:["30 g"], reviews: sampleReviews("Fine Loose Powder") },  
-      { id: "blush-01", name: "Blush On Petal", category:"Blush On", price:85000, description:"Warna natural, mudah dibaurkan.", rating:4.1, sold:410, img: "https://source.unsplash.com/600x600/?blush,makeup", shades:["Peach","Rose"], sizes:["6 g"], reviews: sampleReviews("Blush On Petal") },  
-      { id: "eyeliner-01", name: "Liquid Eyeliner Precision", category:"Eyeliner", price:89000, description:"Tepi presisi, anti smudge.", rating:4.5, sold:1520, img: "https://source.unsplash.com/600x600/?eyeliner,makeup", shades:["Black"], sizes:["2 ml"], reviews: sampleReviews("Liquid Eyeliner Precision") },  
-      { id: "mascara-01", name: "Volumizing Mascara", category:"Mascara", price:99000, description:"Bulu mata tebal & lentik.", rating:4.4, sold:980, img: "https://source.unsplash.com/600x600/?mascara,makeup", shades:["Black"], sizes:["7 ml"], reviews: sampleReviews("Volumizing Mascara") },  
-      { id: "eyeshadow-01", name: "Eyeshadow Palette Glam", category:"Eyeshadow Palette", price:189000, description:"Palet warna lengkap untuk look natural & glam.", rating:4.8, sold:320, img: "https://source.unsplash.com/600x600/?eyeshadow,palette", shades:["Warm","Cool"], sizes:["12 g"], reviews: sampleReviews("Eyeshadow Palette Glam") },  
-      { id: "brow-01", name: "Brow Pencil Slim", category:"Brow Pencil", price:69000, description:"Titik halus, natural.", rating:4.0, sold:430, img: "https://source.unsplash.com/600x600/?brow-pencil,makeup", shades:["Soft Brown","Dark Brown"], sizes:["1.2 g"], reviews: sampleReviews("Brow Pencil Slim") },  
-      { id: "sunscreen-01", name: "UV Shield Sunscreen SPF50", category:"Sunscreen", price:129000, description:"Ringan, non greasy, perlindungan tinggi.", rating:4.5, sold:760, img: "https://source.unsplash.com/600x600/?sunscreen,skincare", shades:["None"], sizes:["30 ml","50 ml"], reviews: sampleReviews("UV Shield Sunscreen SPF50") },  
-      { id: "moist-01", name: "Hydra Moisturizer", category:"Moisturizer", price:139000, description:"Hidrasi intens, tekstur ringan.", rating:4.6, sold:680, img: "https://source.unsplash.com/600x600/?moisturizer,skincare", shades:["None"], sizes:["50 ml"], reviews: sampleReviews("Hydra Moisturizer") },  
-      { id: "wash-01", name: "Gentle Facial Wash", category:"Facial Wash", price:89000, description:"Membersihkan lembut tanpa membuat kering.", rating:4.3, sold:910, img: "https://source.unsplash.com/600x600/?facial-wash,skincare", shades:["None"], sizes:["100 ml"], reviews: sampleReviews("Gentle Facial Wash") },  
-      { id: "serum-01", name: "Brightening Serum", category:"Serum", price:159000, description:"Mencerahkan & melembapkan.", rating:4.7, sold:540, img: "https://source.unsplash.com/600x600/?serum,skincare", shades:["None"], sizes:["30 ml"], reviews: sampleReviews("Brightening Serum") },  
-      { id: "toner-01", name: "Hydrating Toner", category:"Toner", price:99000, description:"Menyeimbangkan pH & melembapkan.", rating:4.2, sold:380, img: "https://source.unsplash.com/600x600/?toner,skincare", shades:["None"], sizes:["150 ml"], reviews: sampleReviews("Hydrating Toner") },  
-      { id: "micellar-01", name: "Micellar Water Cleanse", category:"Micellar Water", price:79000, description:"Membersihkan makeup ringan & kotoran.", rating:4.1, sold:600, img: "https://source.unsplash.com/600x600/?micellar-water,skincare", shades:["None"], sizes:["200 ml"], reviews: sampleReviews("Micellar Water Cleanse") },  
-    ];  
+    /* ---------- Sample product data (using Unsplash per-product) ---------- */
+function getImgUrl(query, size = 600) {
+  return `https://source.unsplash.com/${size}x${size}/?${encodeURIComponent(query)}`;
+}
+
+const PRODUCTS = [
+  { id: "cushion-01", name: "Cushion Dewy Finish", category:"Cushion", price:169000, description:"Finishing lembut, coverage medium, efek dewy natural.", rating:4.7, sold:1245, img: getImgUrl("Cushion Dewy Finish") },
+  { id: "liptint-01", name: "Rara Lip Tint", category:"Lip Tint", price:89000, description:"Warna intens, ringan, tahan lama.", rating:4.5, sold:2150, img: getImgUrl("Rara Lip Tint") },
+  { id: "lipcream-01", name: "Smooth Lip Cream", category:"Lip Cream", price:99000, description:"Creamy finish, matte lembut.", rating:4.4, sold:980, img: getImgUrl("Smooth Lip Cream") },
+  { id: "lipgloss-01", name: "Glossy Shine Lip Gloss", category:"Lip Gloss", price:76000, description:"Kilau sehat, non-sticky.", rating:4.3, sold:450, img: getImgUrl("Glossy Shine Lip Gloss") },
+  { id: "foundation-01", name: "Longwear Foundation", category:"Foundation", price:199000, description:"Coverage full, tahan lembap seharian.", rating:4.6, sold:870, img: getImgUrl("Longwear Foundation") },
+  { id: "compact-01", name: "Matte Compact Powder", category:"Compact Powder", price:119000, description:"Menyerap minyak, cocok oily skin.", rating:4.2, sold:640, img: getImgUrl("Matte Compact Powder") },
+  { id: "loose-01", name: "Fine Loose Powder", category:"Loose Powder", price:129000, description:"Hasil halus, tak terasa berat.", rating:4.3, sold:520, img: getImgUrl("Fine Loose Powder") },
+  { id: "blush-01", name: "Blush On Petal", category:"Blush On", price:85000, description:"Warna natural, mudah dibaurkan.", rating:4.1, sold:410, img: getImgUrl("Blush On Petal") },
+  { id: "eyeliner-01", name: "Liquid Eyeliner Precision", category:"Eyeliner", price:89000, description:"Tepi presisi, anti smudge.", rating:4.5, sold:1520, img: getImgUrl("Liquid Eyeliner") },
+  { id: "mascara-01", name: "Volumizing Mascara", category:"Mascara", price:99000, description:"Bulu mata tebal & lentik.", rating:4.4, sold:980, img: getImgUrl("Volumizing Mascara") },
+  { id: "eyeshadow-01", name: "Eyeshadow Palette Glam", category:"Eyeshadow Palette", price:189000, description:"Palet warna lengkap untuk look natural & glam.", rating:4.8, sold:320, img: getImgUrl("Eyeshadow Palette") },
+  { id: "brow-01", name: "Brow Pencil Slim", category:"Brow Pencil", price:69000, description:"Titik halus, natural.", rating:4.0, sold:430, img: getImgUrl("Brow Pencil") },
+  { id: "sunscreen-01", name: "UV Shield Sunscreen SPF50", category:"Sunscreen", price:129000, description:"Ringan, non greasy, perlindungan tinggi.", rating:4.5, sold:760, img: getImgUrl("Sunscreen SPF50") },
+  { id: "moist-01", name: "Hydra Moisturizer", category:"Moisturizer", price:139000, description:"Hidrasi intens, tekstur ringan.", rating:4.6, sold:680, img: getImgUrl("Hydra Moisturizer") },
+  { id: "wash-01", name: "Gentle Facial Wash", category:"Facial Wash", price:89000, description:"Membersihkan lembut tanpa membuat kering.", rating:4.3, sold:910, img: getImgUrl("Gentle Facial Wash") },
+  { id: "serum-01", name: "Brightening Serum", category:"Serum", price:159000, description:"Mencerahkan & melembapkan.", rating:4.7, sold:540, img: getImgUrl("Brightening Serum") },
+  { id: "toner-01", name: "Hydrating Toner", category:"Toner", price:99000, description:"Menyeimbangkan pH & melembapkan.", rating:4.2, sold:380, img: getImgUrl("Hydrating Toner") },
+  { id: "micellar-01", name: "Micellar Water Cleanse", category:"Micellar Water", price:79000, description:"Membersihkan makeup ringan & kotoran.", rating:4.1, sold:600, img: getImgUrl("Micellar Water") },
+];
   
     /* Helper to create sample reviews */  
     function sampleReviews(productName){  
